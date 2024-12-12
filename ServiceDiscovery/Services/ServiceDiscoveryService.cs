@@ -43,18 +43,46 @@ namespace ServiceDiscovery.Services
             }
         }
 
+        // public async Task CleanStaleInstances()
+        // {
+        //     // Remove instances that haven't sent a heartbeat within the timeout period
+        //     System.Console.WriteLine("Cleaning stale instances...");
+        //     var now = DateTime.Now;
+        //     var instanceCount = _instances.Count();
+
+        //     _instances.RemoveAll(x => now - x.LastHeartbeat > _heartbeatTimeout);
+
+        //     if (_instances.Count != instanceCount)
+        //     {
+        //         await NotifyGateway();
+        //     }
+        // }
+
         public async Task CleanStaleInstances()
         {
-            // Remove instances that haven't sent a heartbeat within the timeout period
             System.Console.WriteLine("Cleaning stale instances...");
+
             var now = DateTime.Now;
             var instanceCount = _instances.Count();
-
-            _instances.RemoveAll(x => now - x.LastHeartbeat > _heartbeatTimeout);
+            var staleInstances = _instances
+                .Where(x => now - x.LastHeartbeat > _heartbeatTimeout)
+                .ToList();
 
             if (_instances.Count != instanceCount)
             {
+                foreach (var instance in staleInstances)
+                {
+                    System.Console.WriteLine("Removed service: {0}, IP: {1}, LastHeartbeat: {2}",
+                        instance.ServiceName, instance.IpAddress, instance.LastHeartbeat);
+                }
+
+                _instances.RemoveAll(x => staleInstances.Contains(x));
+
                 await NotifyGateway();
+            }
+            else
+            {
+                System.Console.WriteLine("No service removed. All instances are healthy.");
             }
         }
 
