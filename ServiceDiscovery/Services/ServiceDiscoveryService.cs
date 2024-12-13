@@ -12,7 +12,6 @@ namespace ServiceDiscovery.Services
     {
         private List<MicroServiceInstance> _instances = new List<MicroServiceInstance>();
         private readonly TimeSpan _heartbeatTimeout = TimeSpan.FromSeconds(30);
-
         private HttpClient _httpClient = new HttpClient();
 
         public async Task Register(MicroServiceInstance instance)

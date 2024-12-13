@@ -29,12 +29,14 @@ namespace ServiceDiscovery.Monitor
 
         public Task StopAsync(CancellationToken cancellationToken)
         {
+            _heartbeatTimer?.Change(Timeout.Infinite, 0);
             _timer?.Change(Timeout.Infinite, 0);
             return Task.CompletedTask;
         }
 
         public void Dispose()
         {
+            _heartbeatTimer?.Dispose();
             _timer?.Dispose();
         }
     }
