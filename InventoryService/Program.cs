@@ -22,36 +22,30 @@ app.Run();
 
 AppDomain.CurrentDomain.ProcessExit += (sender, args) =>
 {
-    var task = RedisterAndDeredister("");
+    var task = RedisterAndDeredister("http://service-name/ServiceDiscovery/Deregister");
     task.Wait(); // Wait for the task to complete
 };
 
 
 await Task.Run(async () =>
 {
-    await RedisterAndDeredister("");
+    await RedisterAndDeredister("http://service-name/ServiceDiscovery/register");
 });
 
 static async Task RedisterAndDeredister(string Url)
 {
     try
     {
-        // Wait for the app to fully start
-        await Task.Delay(5000); // Adjust delay as needed for app readiness
-
+        await Task.Delay(5000);
         var ipFinder = new ReplicaIpFinder();
 
-        // Get own IP address
         string ownIp = ipFinder.GetOwnIpAddress();
 
-        // Define the target API URL
-        string targetApiUrl = Url; // Replace with your target API's URL
+        string targetApiUrl = Url; 
 
-        // Create the payload
         var payload = new { ip = ownIp };
         string jsonPayload = JsonSerializer.Serialize(payload);
 
-        // Send HTTP POST request
         using var httpClient = new HttpClient();
         var content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
         var response = await httpClient.PostAsync(targetApiUrl, content);
