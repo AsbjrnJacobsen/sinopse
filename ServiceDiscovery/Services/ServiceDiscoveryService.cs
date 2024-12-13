@@ -13,10 +13,14 @@ namespace ServiceDiscovery.Services
         private List<MicroServiceInstance> _instances = new List<MicroServiceInstance>();
         private readonly TimeSpan _heartbeatTimeout = TimeSpan.FromSeconds(30);
 
+        private HttpClient _httpClient = new HttpClient();
+
         public async Task Register(MicroServiceInstance instance)
         {
 
-            System.Console.WriteLine("Service {0} at {1} registered", instance.ServiceName, instance.IpAddress);
+            Console.WriteLine("Service {0} at {1} registered", instance.Port, instance.IpAddress);
+            instance.LastHeartbeat = DateTime.Now;
+            instance.HealthCheckUrl = $"http://{instance.IpAddress}:{instance.Port}/Health/GetHealthStatus";
             _instances.Add(instance);
 
             //TODO : Implement Service Discovery send updated list to LoadBalancer
@@ -25,55 +29,50 @@ namespace ServiceDiscovery.Services
 
         public async Task Deregister(MicroServiceInstance instance)
         {
-            System.Console.WriteLine("Service {0} at {1} deregistered", instance.ServiceName, instance.IpAddress);
-            _instances.RemoveAll(x => x.IpAddress == instance.IpAddress && x.ServiceName == instance.ServiceName);
+            Console.WriteLine("Service {0} at {1} deregistered", instance.Port, instance.IpAddress);
+            _instances.RemoveAll(x => x.IpAddress == instance.IpAddress && x.Port == instance.Port);
 
             //TODO : Implement Service Discovery send updated list to LoadBalancer
             await NotifyGateway();
         }
 
-        public async Task ReceiveHeartbeat(string serviceName, string ipAddress)
+        public async Task GetHeartbeat()
         {
             // Update LastHeartbeat for the specified service instance
-            System.Console.WriteLine("Received heartbeat for {0} at {1}", serviceName, ipAddress);
-            var instance = _instances.FirstOrDefault(x => x.ServiceName == serviceName && x.IpAddress == ipAddress);
-            if (instance != null)
+            foreach (var instance in _instances)
             {
-                instance.LastHeartbeat = DateTime.Now;
+                try
+                {
+                    var response = await _httpClient.GetAsync(instance.HealthCheckUrl);
+                    if (response.IsSuccessStatusCode)
+                    {
+                        Console.WriteLine("Received heartbeat for {0} at {1}", instance.Port, instance.IpAddress);
+                        instance.LastHeartbeat = DateTime.Now;
+                    }
+                }
+                catch (System.Exception)
+                {
+
+                    throw;
+                }
             }
         }
 
-        // public async Task CleanStaleInstances()
-        // {
-        //     // Remove instances that haven't sent a heartbeat within the timeout period
-        //     System.Console.WriteLine("Cleaning stale instances...");
-        //     var now = DateTime.Now;
-        //     var instanceCount = _instances.Count();
-
-        //     _instances.RemoveAll(x => now - x.LastHeartbeat > _heartbeatTimeout);
-
-        //     if (_instances.Count != instanceCount)
-        //     {
-        //         await NotifyGateway();
-        //     }
-        // }
-
         public async Task CleanStaleInstances()
         {
-            System.Console.WriteLine("Cleaning stale instances...");
+            Console.WriteLine("Cleaning stale instances...");
 
             var now = DateTime.Now;
-            var instanceCount = _instances.Count();
             var staleInstances = _instances
                 .Where(x => now - x.LastHeartbeat > _heartbeatTimeout)
                 .ToList();
 
-            if (_instances.Count != instanceCount)
+            if (staleInstances.Any())
             {
                 foreach (var instance in staleInstances)
                 {
-                    System.Console.WriteLine("Removed service: {0}, IP: {1}, LastHeartbeat: {2}",
-                        instance.ServiceName, instance.IpAddress, instance.LastHeartbeat);
+                    Console.WriteLine("Removed service: {0}, IP: {1}, LastHeartbeat: {2}",
+                        instance.Port, instance.IpAddress, instance.LastHeartbeat);
                 }
 
                 _instances.RemoveAll(x => staleInstances.Contains(x));
@@ -82,7 +81,7 @@ namespace ServiceDiscovery.Services
             }
             else
             {
-                System.Console.WriteLine("No service removed. All instances are healthy.");
+                Console.WriteLine("No service removed. All instances are healthy.");
             }
         }
 
@@ -93,7 +92,7 @@ namespace ServiceDiscovery.Services
 
         private async Task NotifyGateway()
         {
-            var gatewayUrl = "http://localhost:????/update-services";
+            var gatewayUrl = "http://service_name/update-services";
             using (var httpClient = new HttpClient())
             {
                 try
