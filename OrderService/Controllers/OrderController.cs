@@ -35,7 +35,7 @@ namespace OrderService.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> CreateOrder()
+        public async Task<IActionResult> CreateOrder([FromBody] Order order)
         {
             int delay = new Random().Next(1000, 5000); 
             await Task.Delay(delay); 
@@ -43,7 +43,7 @@ namespace OrderService.Controllers
         }
 
         [HttpPut]
-        public async Task<IActionResult> UpdateOrder()
+        public async Task<IActionResult> UpdateOrder([FromBody] Order order)
         {
             int delay = new Random().Next(1000, 5000); 
             await Task.Delay(delay); 
@@ -51,7 +51,7 @@ namespace OrderService.Controllers
         }
 
         [HttpDelete]
-        public async Task<IActionResult> DeleteOrder()
+        public async Task<IActionResult> DeleteOrder([FromBody] Order order)
         {
             int delay = new Random().Next(1000, 5000); 
             await Task.Delay(delay); 

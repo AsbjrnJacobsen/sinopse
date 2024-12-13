@@ -8,8 +8,9 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 
 namespace InventoryService.Controllers
-{
-    [Route("[controller]")]
+{    
+    [ApiController]
+    [Route("api/[controller]")]
     public class InventoryController : Controller
     {
         public InventoryController()
@@ -33,7 +34,7 @@ namespace InventoryService.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> CreateInventory()
+        public async Task<IActionResult> CreateInventory([FromBody] Inventory inventory)
         {
             int delay = new Random().Next(1000, 5000); 
             await Task.Delay(delay); 
@@ -41,7 +42,7 @@ namespace InventoryService.Controllers
         }
 
         [HttpPut]
-        public async Task<IActionResult> UpdateInventory()
+        public async Task<IActionResult> UpdateInventory([FromBody] Inventory inventory)
         {
             int delay = new Random().Next(1000, 5000); 
             await Task.Delay(delay); 
@@ -49,7 +50,7 @@ namespace InventoryService.Controllers
         }
 
         [HttpDelete]
-        public async Task<IActionResult> DeleteInventory()
+        public async Task<IActionResult> DeleteInventory([FromBody] Inventory inventory)
         {
             int delay = new Random().Next(1000, 5000); 
             await Task.Delay(delay); 
