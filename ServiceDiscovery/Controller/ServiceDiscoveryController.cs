@@ -21,24 +21,15 @@ namespace ServiceDiscovery.Controller
         [HttpPost("register")]
         public async Task<IActionResult> Register([FromBody] MicroServiceInstance instance)
         {
-            instance.LastHeartbeat = DateTime.Now;
             await _serviceDiscoveryService.Register(instance);
             return Ok("Service registered successfully");
         }
 
         [HttpDelete("deregister")]
-        public async Task<IActionResult> Deregister(MicroServiceInstance instance)
+        public async Task<IActionResult> Deregister([FromBody] MicroServiceInstance instance)
         {
             await _serviceDiscoveryService.Deregister(instance);
             return Ok("Service deregistered successfully");
         }
-
-        [HttpPost("heartbeat")]
-        public async Task<IActionResult> ReceiveHeartbeat([FromQuery] string serviceName, [FromQuery] string ipAddress)
-        {
-            await _serviceDiscoveryService.ReceiveHeartbeat(serviceName, ipAddress);
-            return Ok("Heartbeat received");
-        }
-
     }
 }

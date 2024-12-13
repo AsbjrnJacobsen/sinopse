@@ -10,6 +10,7 @@ namespace ServiceDiscovery.Monitor
     {
         private readonly IServiceDiscoveryService _serviceDiscoveryService;
         private Timer _timer;
+        private Timer _heartbeatTimer;
 
         public HeartbeatMonitorService(IServiceDiscoveryService serviceDiscoveryService)
         {
@@ -18,6 +19,9 @@ namespace ServiceDiscovery.Monitor
 
         public Task StartAsync(CancellationToken cancellationToken)
         {
+            // Run heartbeat task every 30 seconds
+            _heartbeatTimer = new Timer(async state => await _serviceDiscoveryService.GetHeartbeat(), null, TimeSpan.Zero, TimeSpan.FromSeconds(30));
+
             // Run cleanup task every 30 seconds
             _timer = new Timer(async state => await _serviceDiscoveryService.CleanStaleInstances(), null, TimeSpan.Zero, TimeSpan.FromSeconds(30));
             return Task.CompletedTask;
