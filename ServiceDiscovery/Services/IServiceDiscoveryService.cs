@@ -11,7 +11,6 @@ namespace ServiceDiscovery.Services
         Task Register(MicroServiceInstance instance);
         Task Deregister(MicroServiceInstance instance);
         Task<List<MicroServiceInstance>> GetInstances();
-        Task GetHeartbeat();
-        Task CleanStaleInstances();
+        Task CleanUpSequence();
     }
 }

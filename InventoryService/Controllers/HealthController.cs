@@ -7,7 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace InventoryService.Controllers
 {
     [ApiController]
-    [Route("api/[controller]")]
+    [Route("[controller]")]
     public class HealthController : Controller
     {
         [HttpGet("GetHealthStatus")]

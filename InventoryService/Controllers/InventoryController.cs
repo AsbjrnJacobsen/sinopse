@@ -10,7 +10,7 @@ using Microsoft.Extensions.Logging;
 namespace InventoryService.Controllers
 {    
     [ApiController]
-    [Route("api/[controller]")]
+    [Route("[controller]")]
     public class InventoryController : Controller
     {
         public InventoryController()
