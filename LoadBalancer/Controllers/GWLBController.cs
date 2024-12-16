@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using ServiceDiscovery.Model;
 
 namespace LoadBalancer;
 
@@ -7,14 +8,21 @@ namespace LoadBalancer;
 public class GWLBController : ControllerBase
 {
     private readonly HttpClient _httpClient;
-    private readonly string _serviceDiscoveryUrl = "http://servicediscovery/api/services/";
     private readonly Dictionary<string, int> _roundRobinIndex = new();
     
+    private List<MicroServiceInstance> _microServiceInstances = new();
     public GWLBController(HttpClient httpClient)
     {
         _httpClient = httpClient;
     }
 
+    [HttpPost("{incInstance}")]
+    public async Task<IActionResult> UpdateInstance([FromBody] List<MicroServiceInstance> incInstance)
+    {
+        _microServiceInstances = incInstance;
+        return Ok();
+    }
+    
     [HttpGet("order/{action}")]
     public async Task<IActionResult> ForwardToOrderService(string action, [FromQuery] int id = 0)
     {
@@ -31,7 +39,8 @@ public class GWLBController : ControllerBase
     private async Task<IActionResult> ForwardRequest(string serviceName, string controllerName, string action, int id)
     {
         // Hent services fra Service Discovery
-        var instances = await GetServiceInstances(serviceName);
+         var instances = await GetServiceInstances(serviceName);
+        
         if (instances == null || instances.Count == 0)
         {
             return StatusCode(503, $@"The service ""{serviceName}"" is not available.");
@@ -52,6 +61,7 @@ public class GWLBController : ControllerBase
             switch (HttpContext.Request.Method.ToUpper())
             {
                 case "GET":
+                    Console.WriteLine($"Get case - {serviceName}");
                     response = await _httpClient.GetAsync(targetUrl);
                     break;
                 case "POST":
@@ -84,14 +94,18 @@ public class GWLBController : ControllerBase
 
     private async Task<IList<string>> GetServiceInstances(string serviceName)
     {
-        var response = await _httpClient.GetAsync($"{_serviceDiscoveryUrl}{serviceName}");
+        /*
+        // Get info from ServDisco 
+        //var response = await _httpClient.GetAsync($"{_serviceDiscoveryUrl}{serviceName}");
+        var response ;
         
         if (!response.IsSuccessStatusCode)
         {
             return null;
         }
         
-        return await response.Content.ReadFromJsonAsync<List<string>>();
+        return await response.Content.ReadFromJsonAsync<List<string>>(); */
+        return null;
     }
 
     private string GetNextInstance(string serviceName, IList<string> instances)
