@@ -43,8 +43,6 @@ namespace ServiceDiscovery.Services
                 try
                 {
                     var response = await _httpClient.GetAsync(instance.HealthCheckUrl);
-                    System.Console.WriteLine(response.StatusCode);
-                    System.Console.WriteLine(response.Content.ReadAsStringAsync().Result);
                     if (response.IsSuccessStatusCode)
                     {
                         Console.WriteLine("Received heartbeat for {0} at {1}", instance.Port, instance.IpAddress);

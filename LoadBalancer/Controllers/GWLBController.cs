@@ -1,4 +1,6 @@
+using System.Security.Cryptography;
 using LoadBalancer.Model;
+using LoadBalancer.Service;
 using Microsoft.AspNetCore.Mvc;
 
 namespace LoadBalancer.Controllers;
@@ -8,41 +10,41 @@ namespace LoadBalancer.Controllers;
 public class GWLBController : ControllerBase
 {
     private readonly HttpClient _httpClient;
-    private readonly Dictionary<string, int> _roundRobinIndex = new();
+    private readonly Instances _instances;
 
-    private List<MicroServiceInstance> _orderServiceInstances = new();
-    private List<MicroServiceInstance> _inventoryServiceInstances = new();
-    public GWLBController(HttpClient httpClient)
+    public GWLBController(HttpClient httpClient, Instances instances)
     {
         _httpClient = httpClient;
+        _instances = instances;
     }
 
     [HttpPost("updateInstance")]
     public async Task<IActionResult> UpdateInstance([FromBody] List<MicroServiceInstance> incInstance)
     {
-        _orderServiceInstances.Clear();
-        _inventoryServiceInstances.Clear();
+        _instances.OrderServiceInstances.Clear();
+        _instances.InventoryServiceInstances.Clear();
+
         foreach (var instance in incInstance)
         {
             if (instance.ServiceName == "OrderService")
             {
-                _orderServiceInstances.Add(instance);
+                _instances.OrderServiceInstances.Add(instance);
             }
             else if (instance.ServiceName == "InventoryService")
             {
-                _inventoryServiceInstances.Add(instance);
+                _instances.InventoryServiceInstances.Add(instance);
             }
         }
         return await Task.FromResult<IActionResult>(Ok());
     }
     
-    [HttpGet("order/{action}")]
+    [HttpGet("order")]
     public async Task<IActionResult> ForwardToOrderService(string action, [FromQuery] int id = 0)
     {
         return await ForwardRequest("OrderService", "Order", action, id);
     }
 
-    [HttpGet("inventory/{action}")]
+    [HttpGet("inventory")]
     public async Task<IActionResult> ForwardToInventoryService(string action, [FromQuery] int id = 0)
     {
         return await ForwardRequest("InventoryService", "Inventory", action, id);
@@ -51,21 +53,13 @@ public class GWLBController : ControllerBase
 
     private async Task<IActionResult> ForwardRequest(string serviceName, string controllerName, string action, int id)
     {
-        // Hent services fra Service Discovery
-        /*var instances = await GetServiceInstances(serviceName);
-        
-        if (instances == null || instances.Count == 0)
-        {
-            return StatusCode(503, $@"The service ""{serviceName}"" is not available.");
-        }*/
-        
         // Round Robin Load Balancing
         var instanceUrl = GetNextInstance(serviceName);
         
         // Forward the request
-        var targetUrl = $"{instanceUrl}/{controllerName}/{action}";
+        var targetUrl = $"http://{instanceUrl.IpAddress}:{instanceUrl.Port}/{controllerName}/{action}";
         if(id > 0) targetUrl += $"?id={id}";
-
+        System.Console.WriteLine($"Forwarding request to: {targetUrl}");
         try
         {
             HttpResponseMessage response;
@@ -105,39 +99,30 @@ public class GWLBController : ControllerBase
         }
     }
 
-    private async Task<IList<string>> GetServiceInstances(string serviceName)
-    {
-        /*
-        // Get info from ServDisco 
-        //var response = await _httpClient.GetAsync($"{_serviceDiscoveryUrl}{serviceName}");
-        var response ;
-        
-        if (!response.IsSuccessStatusCode)
-        {
-            return null;
-        }
-        
-        return await response.Content.ReadFromJsonAsync<List<string>>(); */
-        return null;
-    }
-
     private MicroServiceInstance GetNextInstance(string serviceName)
     {
         if (serviceName == "OrderService")
         {
-            var index = _roundRobinIndex.GetValueOrDefault(serviceName, -1);
-            index = (index + 1) % _orderServiceInstances.Count;
+            var index = _instances.RoundRobinIndex.GetValueOrDefault(serviceName, -1);
+
+            System.Console.WriteLine($"Index {index}");
+            System.Console.WriteLine($"OrderService Count {_instances.OrderServiceInstances.Count}");
+
+            index = (index + 1) % _instances.OrderServiceInstances.Count;
             
-            _roundRobinIndex[serviceName] = index;
-            return _orderServiceInstances[index];   
+            _instances.RoundRobinIndex[serviceName] = index;
+            return _instances.OrderServiceInstances[index];   
         }
         else
         {
-            var index = _roundRobinIndex.GetValueOrDefault(serviceName, -1);
-            index = (index + 1) % _inventoryServiceInstances.Count;
+            var index = _instances.RoundRobinIndex.GetValueOrDefault(serviceName, -1);
+            index = (index + 1) % _instances.InventoryServiceInstances.Count;
             
-            _roundRobinIndex[serviceName] = index;
-            return _inventoryServiceInstances[index];
+            System.Console.WriteLine($"Index {index}");
+            System.Console.WriteLine($"OrderService Count {_instances.InventoryServiceInstances.Count}");
+
+            _instances.RoundRobinIndex[serviceName] = index;
+            return _instances.InventoryServiceInstances[index];
         }
     }
 }

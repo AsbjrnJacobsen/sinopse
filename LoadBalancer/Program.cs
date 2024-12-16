@@ -1,5 +1,6 @@
 using LoadBalancer;
 using LoadBalancer.Controllers;
+using LoadBalancer.Service;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -14,6 +15,8 @@ builder.Services.AddHttpClient<GWLBController>(client =>
     client.Timeout = TimeSpan.FromSeconds(5);
 });
 builder.Services.AddControllers();
+
+builder.Services.AddSingleton<Instances>();
 
 var app = builder.Build();
 
