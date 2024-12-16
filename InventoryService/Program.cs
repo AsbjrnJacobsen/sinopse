@@ -1,6 +1,7 @@
 using System.Text;
 using System.Text.Json;
 using InventoryService;
+using InventoryService.Model;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -22,14 +23,14 @@ app.Run();
 
 AppDomain.CurrentDomain.ProcessExit += (sender, args) =>
 {
-    var task = RedisterAndDeredister("http://service-name/ServiceDiscovery/Deregister");
+    var task = RedisterAndDeredister("http://servicediscovery:8085/ServiceDiscovery/deregister");
     task.Wait(); // Wait for the task to complete
 };
 
 
 await Task.Run(async () =>
 {
-    await RedisterAndDeredister("http://service-name/ServiceDiscovery/register");
+    await RedisterAndDeredister("http://inventoryservice:8085/ServiceDiscovery/register");
 });
 
 static async Task RedisterAndDeredister(string Url)
@@ -41,9 +42,9 @@ static async Task RedisterAndDeredister(string Url)
 
         string ownIp = ipFinder.GetOwnIpAddress();
 
-        string targetApiUrl = Url; 
+        string targetApiUrl = Url;
 
-        var payload = new { ip = ownIp };
+        var payload = new MicroServiceInstance { IpAddress = ownIp, Port = 8083, ServiceName = "InventoryService" };
         string jsonPayload = JsonSerializer.Serialize(payload);
 
         using var httpClient = new HttpClient();

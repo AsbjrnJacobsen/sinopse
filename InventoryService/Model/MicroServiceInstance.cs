@@ -1,9 +1,4 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-
-namespace ServiceDiscovery.Model
+namespace InventoryService.Model
 {
     public class MicroServiceInstance
     {

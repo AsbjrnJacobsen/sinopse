@@ -8,6 +8,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddSingleton<IServiceDiscoveryService, ServiceDiscoveryService>();
+
 builder.Services.AddHostedService<HeartbeatMonitorService>();
 builder.Services.AddControllers();
 

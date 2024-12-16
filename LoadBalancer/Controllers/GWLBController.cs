@@ -1,7 +1,7 @@
+using LoadBalancer.Model;
 using Microsoft.AspNetCore.Mvc;
-using ServiceDiscovery.Model;
 
-namespace LoadBalancer;
+namespace LoadBalancer.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
@@ -16,11 +16,11 @@ public class GWLBController : ControllerBase
         _httpClient = httpClient;
     }
 
-    [HttpPost("{incInstance}")]
+    [HttpPost("updateInstance")]
     public async Task<IActionResult> UpdateInstance([FromBody] List<MicroServiceInstance> incInstance)
     {
         _microServiceInstances = incInstance;
-        return Ok();
+        return await Task.FromResult<IActionResult>(Ok());
     }
     
     [HttpGet("order/{action}")]
