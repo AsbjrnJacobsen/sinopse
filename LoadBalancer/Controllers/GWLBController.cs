@@ -4,13 +4,14 @@ using Microsoft.AspNetCore.Mvc;
 namespace LoadBalancer.Controllers;
 
 [ApiController]
-[Route("api/[controller]")]
+[Route("[controller]")]
 public class GWLBController : ControllerBase
 {
     private readonly HttpClient _httpClient;
     private readonly Dictionary<string, int> _roundRobinIndex = new();
-    
-    private List<MicroServiceInstance> _microServiceInstances = new();
+
+    private List<MicroServiceInstance> _orderServiceInstances = new();
+    private List<MicroServiceInstance> _inventoryServiceInstances = new();
     public GWLBController(HttpClient httpClient)
     {
         _httpClient = httpClient;
@@ -19,7 +20,19 @@ public class GWLBController : ControllerBase
     [HttpPost("updateInstance")]
     public async Task<IActionResult> UpdateInstance([FromBody] List<MicroServiceInstance> incInstance)
     {
-        _microServiceInstances = incInstance;
+        _orderServiceInstances.Clear();
+        _inventoryServiceInstances.Clear();
+        foreach (var instance in incInstance)
+        {
+            if (instance.ServiceName == "OrderService")
+            {
+                _orderServiceInstances.Add(instance);
+            }
+            else if (instance.ServiceName == "InventoryService")
+            {
+                _inventoryServiceInstances.Add(instance);
+            }
+        }
         return await Task.FromResult<IActionResult>(Ok());
     }
     
@@ -39,18 +52,18 @@ public class GWLBController : ControllerBase
     private async Task<IActionResult> ForwardRequest(string serviceName, string controllerName, string action, int id)
     {
         // Hent services fra Service Discovery
-         var instances = await GetServiceInstances(serviceName);
+        /*var instances = await GetServiceInstances(serviceName);
         
         if (instances == null || instances.Count == 0)
         {
             return StatusCode(503, $@"The service ""{serviceName}"" is not available.");
-        }
+        }*/
         
         // Round Robin Load Balancing
-        var instanceUrl = GetNextInstance(serviceName, instances);
+        var instanceUrl = GetNextInstance(serviceName);
         
         // Forward the request
-        var targetUrl = $"{instanceUrl}/api/{controllerName}/{action}";
+        var targetUrl = $"{instanceUrl}/{controllerName}/{action}";
         if(id > 0) targetUrl += $"?id={id}";
 
         try
@@ -108,12 +121,23 @@ public class GWLBController : ControllerBase
         return null;
     }
 
-    private string GetNextInstance(string serviceName, IList<string> instances)
+    private MicroServiceInstance GetNextInstance(string serviceName)
     {
-        var index = _roundRobinIndex.GetValueOrDefault(serviceName, -1);
-        index = (index + 1) % instances.Count;
-        
-        _roundRobinIndex[serviceName] = index;
-        return instances[index];
+        if (serviceName == "OrderService")
+        {
+            var index = _roundRobinIndex.GetValueOrDefault(serviceName, -1);
+            index = (index + 1) % _orderServiceInstances.Count;
+            
+            _roundRobinIndex[serviceName] = index;
+            return _orderServiceInstances[index];   
+        }
+        else
+        {
+            var index = _roundRobinIndex.GetValueOrDefault(serviceName, -1);
+            index = (index + 1) % _inventoryServiceInstances.Count;
+            
+            _roundRobinIndex[serviceName] = index;
+            return _inventoryServiceInstances[index];
+        }
     }
 }

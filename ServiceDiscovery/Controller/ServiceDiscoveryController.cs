@@ -12,8 +12,8 @@ namespace ServiceDiscovery.Controller
     [Route("[controller]")]
     public class ServiceDiscoveryController : ControllerBase
     {
-        private readonly ServiceDiscoveryService _serviceDiscoveryService;
-        public ServiceDiscoveryController([FromBody] ServiceDiscoveryService serviceDiscoveryService)
+        private readonly IServiceDiscoveryService _serviceDiscoveryService;
+        public ServiceDiscoveryController(IServiceDiscoveryService serviceDiscoveryService)
         {
             _serviceDiscoveryService = serviceDiscoveryService;
         }

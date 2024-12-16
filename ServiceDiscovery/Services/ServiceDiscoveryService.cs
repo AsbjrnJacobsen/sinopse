@@ -35,7 +35,7 @@ namespace ServiceDiscovery.Services
             await NotifyGateway();
         }
 
-        public async Task GetHeartbeat()
+        private async Task GetHeartbeat()
         {
             // Update LastHeartbeat for the specified service instance
             foreach (var instance in _instances)
@@ -43,10 +43,16 @@ namespace ServiceDiscovery.Services
                 try
                 {
                     var response = await _httpClient.GetAsync(instance.HealthCheckUrl);
+                    System.Console.WriteLine(response.StatusCode);
+                    System.Console.WriteLine(response.Content.ReadAsStringAsync().Result);
                     if (response.IsSuccessStatusCode)
                     {
                         Console.WriteLine("Received heartbeat for {0} at {1}", instance.Port, instance.IpAddress);
                         instance.LastHeartbeat = DateTime.Now;
+                    }
+                    else
+                    {
+                        System.Console.WriteLine($"Failed to receive heartbeat for {instance.Port} at {instance.IpAddress}");
                     }
                 }
                 catch (System.Exception)
@@ -57,7 +63,7 @@ namespace ServiceDiscovery.Services
             }
         }
 
-        public async Task CleanStaleInstances()
+        private async Task CleanStaleInstances()
         {
             Console.WriteLine("Cleaning stale instances...");
             Console.WriteLine($"Instance Count {_instances.Count}");
@@ -92,7 +98,7 @@ namespace ServiceDiscovery.Services
 
         private async Task NotifyGateway()
         {
-            var gatewayUrl = "http://loadbalancer/GWLB/updateInstance";
+            var gatewayUrl = "http://loadbalancer:8086/GWLB/updateInstance";
             using (var httpClient = new HttpClient())
             {
                 try
@@ -116,6 +122,12 @@ namespace ServiceDiscovery.Services
                     Console.WriteLine($"Error notifying gateway: {ex.Message}");
                 }
             }
+        }
+
+        public async Task CleanUpSequence()
+        {
+            await GetHeartbeat();
+            await CleanStaleInstances();
         }
     }
 }

@@ -10,7 +10,7 @@ using OrderService.Model;
 namespace OrderService.Controllers
 {
     [ApiController]
-    [Route("api/[controller]")]
+    [Route("[controller]")]
     public class OrderController : Controller
     {
         public OrderController()
