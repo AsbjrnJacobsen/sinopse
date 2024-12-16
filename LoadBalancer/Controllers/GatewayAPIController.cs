@@ -1,5 +1,5 @@
+using LoadBalancer.Model;
 using Microsoft.AspNetCore.Mvc;
-using ServiceDiscovery.Model;
 
 namespace LoadBalancer;
 

@@ -60,7 +60,8 @@ namespace ServiceDiscovery.Services
         public async Task CleanStaleInstances()
         {
             Console.WriteLine("Cleaning stale instances...");
-
+            Console.WriteLine($"Instance Count {_instances.Count}");
+            
             var now = DateTime.Now;
             var staleInstances = _instances
                 .Where(x => now - x.LastHeartbeat > _heartbeatTimeout)
@@ -91,7 +92,7 @@ namespace ServiceDiscovery.Services
 
         private async Task NotifyGateway()
         {
-            var gatewayUrl = "http://service_name/update-services";
+            var gatewayUrl = "http://loadbalancer/GWLB/updateInstance";
             using (var httpClient = new HttpClient())
             {
                 try

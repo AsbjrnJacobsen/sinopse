@@ -1,4 +1,5 @@
 using LoadBalancer;
+using LoadBalancer.Controllers;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -22,6 +23,6 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
-//Test
 
+app.MapControllers();
 app.Run();
