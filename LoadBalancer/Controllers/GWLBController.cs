@@ -1,7 +1,10 @@
 using System.Security.Cryptography;
+using System.Text;
+using System.Text.Json.Serialization;
 using LoadBalancer.Model;
 using LoadBalancer.Service;
 using Microsoft.AspNetCore.Mvc;
+using Newtonsoft.Json;
 
 namespace LoadBalancer.Controllers;
 
@@ -39,20 +42,22 @@ public class GWLBController : ControllerBase
         return await Task.FromResult<IActionResult>(Ok());
     }
     
-    [HttpGet("order")]
-    public async Task<IActionResult> ForwardToOrderService(string action, [FromQuery] int id = 0)
+    [Route("order")]
+    [AcceptVerbs("GET", "POST", "PUT", "DELETE")]
+    public async Task<IActionResult> ForwardToOrderService(string action, [FromQuery] int id = 0, [FromBody] Order? order = null)
     {
-        return await ForwardRequest("OrderService", "Order", action, id);
+        return await ForwardRequest("OrderService", "Order", action, id, order!);
     }
 
-    [HttpGet("inventory")]
-    public async Task<IActionResult> ForwardToInventoryService(string action, [FromQuery] int id = 0)
+    [Route("inventory")]
+    [AcceptVerbs("GET", "POST", "PUT", "DELETE")]
+    public async Task<IActionResult> ForwardToInventoryService(string action, [FromQuery] int id = 0, [FromBody] Inventory? inventory = null)
     {
-        return await ForwardRequest("InventoryService", "Inventory", action, id);
+        return await ForwardRequest("InventoryService", "Inventory", action, id, inventory!);
     }
 
 
-    private async Task<IActionResult> ForwardRequest(string serviceName, string controllerName, string action, int id)
+    private async Task<IActionResult> ForwardRequest(string serviceName, string controllerName, string action, int id, Object objectToForward)
     {
         // Round Robin Load Balancing - calls the method that Load Balances the requests
         var instanceUrl = GetNextInstance(serviceName);
@@ -60,26 +65,31 @@ public class GWLBController : ControllerBase
         // Forward the request
         var targetUrl = $"http://{instanceUrl.IpAddress}:{instanceUrl.Port}/{controllerName}/{action}";
         if(id > 0) targetUrl += $"?id={id}";
+
+        
         
         try
         {
             HttpResponseMessage response;
-
+            
             // Determine HTTP method from the current request
+            StringContent? requestContent = null;
+            if (objectToForward != null)
+            {
+                string json = JsonConvert.SerializeObject(objectToForward);
+                requestContent = new StringContent(json, Encoding.UTF8, "application/json");
+            }
             switch (HttpContext.Request.Method.ToUpper())
             {
                 case "GET":
                     response = await _httpClient.GetAsync(targetUrl);
                     break;
                 case "POST":
-                    var postContent = new StreamContent(HttpContext.Request.Body);
-                    postContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(HttpContext.Request.ContentType!);
-                    response = await _httpClient.PostAsync(targetUrl, postContent);
+                        response = await _httpClient.PostAsync(targetUrl, requestContent);
                     break;
                 case "PUT":
-                    var putContent = new StreamContent(HttpContext.Request.Body);
-                    putContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(HttpContext.Request.ContentType!);
-                    response = await _httpClient.PutAsync(targetUrl, putContent);
+                   
+                    response = await _httpClient.PutAsync(targetUrl, requestContent);
                     break;
                 case "DELETE":
                     response = await _httpClient.DeleteAsync(targetUrl);

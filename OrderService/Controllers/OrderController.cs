@@ -51,7 +51,7 @@ namespace OrderService.Controllers
         }
 
         [HttpDelete("DeleteOrder")]
-        public async Task<IActionResult> DeleteOrder([FromBody] Order order)
+        public async Task<IActionResult> DeleteOrder(int id)
         {
             int delay = new Random().Next(1000, 5000); 
             await Task.Delay(delay); 
