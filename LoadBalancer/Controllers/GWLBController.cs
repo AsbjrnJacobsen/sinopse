@@ -12,12 +12,13 @@ public class GWLBController : ControllerBase
     private readonly HttpClient _httpClient;
     private readonly Instances _instances;
 
+    // ServiceDiscovery sends a Service to the GatewayLoadbalancer
     public GWLBController(HttpClient httpClient, Instances instances)
     {
         _httpClient = httpClient;
         _instances = instances;
     }
-
+    // Updates the instances (available services)
     [HttpPost("updateInstance")]
     public async Task<IActionResult> UpdateInstance([FromBody] List<MicroServiceInstance> incInstance)
     {
@@ -53,13 +54,13 @@ public class GWLBController : ControllerBase
 
     private async Task<IActionResult> ForwardRequest(string serviceName, string controllerName, string action, int id)
     {
-        // Round Robin Load Balancing
+        // Round Robin Load Balancing - calls the method that Load Balances the requests
         var instanceUrl = GetNextInstance(serviceName);
         
         // Forward the request
         var targetUrl = $"http://{instanceUrl.IpAddress}:{instanceUrl.Port}/{controllerName}/{action}";
         if(id > 0) targetUrl += $"?id={id}";
-        System.Console.WriteLine($"Forwarding request to: {targetUrl}");
+        
         try
         {
             HttpResponseMessage response;
@@ -68,17 +69,16 @@ public class GWLBController : ControllerBase
             switch (HttpContext.Request.Method.ToUpper())
             {
                 case "GET":
-                    Console.WriteLine($"Get case - {serviceName}");
                     response = await _httpClient.GetAsync(targetUrl);
                     break;
                 case "POST":
                     var postContent = new StreamContent(HttpContext.Request.Body);
-                    postContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(HttpContext.Request.ContentType);
+                    postContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(HttpContext.Request.ContentType!);
                     response = await _httpClient.PostAsync(targetUrl, postContent);
                     break;
                 case "PUT":
                     var putContent = new StreamContent(HttpContext.Request.Body);
-                    putContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(HttpContext.Request.ContentType);
+                    putContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(HttpContext.Request.ContentType!);
                     response = await _httpClient.PutAsync(targetUrl, putContent);
                     break;
                 case "DELETE":
@@ -104,10 +104,7 @@ public class GWLBController : ControllerBase
         if (serviceName == "OrderService")
         {
             var index = _instances.RoundRobinIndex.GetValueOrDefault(serviceName, -1);
-
-            System.Console.WriteLine($"Index {index}");
-            System.Console.WriteLine($"OrderService Count {_instances.OrderServiceInstances.Count}");
-
+            
             index = (index + 1) % _instances.OrderServiceInstances.Count;
             
             _instances.RoundRobinIndex[serviceName] = index;
@@ -118,9 +115,6 @@ public class GWLBController : ControllerBase
             var index = _instances.RoundRobinIndex.GetValueOrDefault(serviceName, -1);
             index = (index + 1) % _instances.InventoryServiceInstances.Count;
             
-            System.Console.WriteLine($"Index {index}");
-            System.Console.WriteLine($"OrderService Count {_instances.InventoryServiceInstances.Count}");
-
             _instances.RoundRobinIndex[serviceName] = index;
             return _instances.InventoryServiceInstances[index];
         }
