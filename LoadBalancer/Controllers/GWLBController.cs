@@ -1,7 +1,8 @@
-using System.Security.Cryptography;
+using System.Text;
 using LoadBalancer.Model;
 using LoadBalancer.Service;
 using Microsoft.AspNetCore.Mvc;
+using Newtonsoft.Json;
 
 namespace LoadBalancer.Controllers;
 
@@ -18,6 +19,7 @@ public class GWLBController : ControllerBase
         _httpClient = httpClient;
         _instances = instances;
     }
+
     // Updates the instances (available services)
     [HttpPost("updateInstance")]
     public async Task<IActionResult> UpdateInstance([FromBody] List<MicroServiceInstance> incInstance)
@@ -26,60 +28,63 @@ public class GWLBController : ControllerBase
         _instances.InventoryServiceInstances.Clear();
 
         foreach (var instance in incInstance)
-        {
             if (instance.ServiceName == "OrderService")
-            {
                 _instances.OrderServiceInstances.Add(instance);
-            }
-            else if (instance.ServiceName == "InventoryService")
-            {
-                _instances.InventoryServiceInstances.Add(instance);
-            }
-        }
+            else if (instance.ServiceName == "InventoryService") _instances.InventoryServiceInstances.Add(instance);
+
         return await Task.FromResult<IActionResult>(Ok());
     }
-    
-    [HttpGet("order")]
-    public async Task<IActionResult> ForwardToOrderService(string action, [FromQuery] int id = 0)
+
+    [Route("order")]
+    [AcceptVerbs("GET", "POST", "PUT", "DELETE")]
+    public async Task<IActionResult> ForwardToOrderService(string action, [FromQuery] int id = 0,
+        [FromBody] Order? order = null)
     {
-        return await ForwardRequest("OrderService", "Order", action, id);
+        return await ForwardRequest("OrderService", "Order", action, id, order!);
     }
 
-    [HttpGet("inventory")]
-    public async Task<IActionResult> ForwardToInventoryService(string action, [FromQuery] int id = 0)
+    [Route("inventory")]
+    [AcceptVerbs("GET", "POST", "PUT", "DELETE")]
+    public async Task<IActionResult> ForwardToInventoryService(string action, [FromQuery] int id = 0,
+        [FromBody] Inventory? inventory = null)
     {
-        return await ForwardRequest("InventoryService", "Inventory", action, id);
+        return await ForwardRequest("InventoryService", "Inventory", action, id, inventory!);
     }
 
 
-    private async Task<IActionResult> ForwardRequest(string serviceName, string controllerName, string action, int id)
+    private async Task<IActionResult> ForwardRequest(string serviceName, string controllerName, string action, int id,
+        object objectToForward)
     {
         // Round Robin Load Balancing - calls the method that Load Balances the requests
         var instanceUrl = GetNextInstance(serviceName);
-        
+
         // Forward the request
         var targetUrl = $"http://{instanceUrl.IpAddress}:{instanceUrl.Port}/{controllerName}/{action}";
-        if(id > 0) targetUrl += $"?id={id}";
+        if (id > 0) targetUrl += $"?id={id}";
         
         try
         {
             HttpResponseMessage response;
 
             // Determine HTTP method from the current request
+            StringContent? requestContent = null;
+            if (objectToForward != null)
+            {
+                var json = JsonConvert.SerializeObject(objectToForward);
+                requestContent = new StringContent(json, Encoding.UTF8, "application/json");
+            }
+
             switch (HttpContext.Request.Method.ToUpper())
             {
                 case "GET":
                     response = await _httpClient.GetAsync(targetUrl);
                     break;
                 case "POST":
-                    var postContent = new StreamContent(HttpContext.Request.Body);
-                    postContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(HttpContext.Request.ContentType!);
-                    response = await _httpClient.PostAsync(targetUrl, postContent);
+                    response = await _httpClient.PostAsync(targetUrl, requestContent);
                     break;
                 case "PUT":
-                    var putContent = new StreamContent(HttpContext.Request.Body);
-                    putContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(HttpContext.Request.ContentType!);
-                    response = await _httpClient.PutAsync(targetUrl, putContent);
+
+                    response = await _httpClient.PutAsync(targetUrl, requestContent);
                     break;
                 case "DELETE":
                     response = await _httpClient.DeleteAsync(targetUrl);
@@ -104,17 +109,17 @@ public class GWLBController : ControllerBase
         if (serviceName == "OrderService")
         {
             var index = _instances.RoundRobinIndex.GetValueOrDefault(serviceName, -1);
-            
+
             index = (index + 1) % _instances.OrderServiceInstances.Count;
-            
+
             _instances.RoundRobinIndex[serviceName] = index;
-            return _instances.OrderServiceInstances[index];   
+            return _instances.OrderServiceInstances[index];
         }
         else
         {
             var index = _instances.RoundRobinIndex.GetValueOrDefault(serviceName, -1);
             index = (index + 1) % _instances.InventoryServiceInstances.Count;
-            
+
             _instances.RoundRobinIndex[serviceName] = index;
             return _instances.InventoryServiceInstances[index];
         }
