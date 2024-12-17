@@ -33,7 +33,7 @@ namespace InventoryService.Controllers
             return new List<Inventory>();
         }
 
-        [HttpGet("CreateInventory")]
+        [HttpPost("CreateInventory")]
         public async Task<IActionResult> CreateInventory([FromBody] Inventory inventory)
         {
             int delay = new Random().Next(1000, 5000); 
@@ -41,7 +41,7 @@ namespace InventoryService.Controllers
             return await Task.FromResult(Ok());
         }
 
-        [HttpGet("UpdateInventory")]
+        [HttpPut("UpdateInventory")]
         public async Task<IActionResult> UpdateInventory([FromBody] Inventory inventory)
         {
             int delay = new Random().Next(1000, 5000); 
@@ -49,8 +49,8 @@ namespace InventoryService.Controllers
             return await Task.FromResult(Ok());
         }
 
-        [HttpGet("DeleteInventory")]
-        public async Task<IActionResult> DeleteInventory([FromBody] Inventory inventory)
+        [HttpDelete("DeleteInventory")]
+        public async Task<IActionResult> DeleteInventory(int id)
         {
             int delay = new Random().Next(1000, 5000); 
             await Task.Delay(delay); 
